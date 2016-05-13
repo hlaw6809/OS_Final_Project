@@ -56,6 +56,14 @@ int PCB_set_pid (PCB_p raw_pcb, unsigned long pid) {
 	return SUCCESS;
 }
 
+int PCB_set_type (PCB_p raw_pcb, enum pcb_type type) {
+	if(!raw_pcb) {
+		return NO_OBJECT_ERROR;
+	}
+	raw_pcb -> type = type;
+	return SUCCESS;
+}
+
 unsigned long PCB_get_pid (PCB_p raw_pcb) {
 	if(!raw_pcb) {
 		return NO_OBJECT_ERROR;
@@ -91,6 +99,13 @@ unsigned long PCB_get_PC (PCB_p raw_pcb) {
 		return NO_OBJECT_ERROR;
 	}
 	return raw_pcb -> state;
+}
+
+enum pcb_type PCB_get_type (PCB_p raw_pcb) {
+	if(!raw_pcb) {
+		return NO_OBJECT_ERROR;
+	}
+	return raw_pcb -> type;
 }
 
 // set the PCB's state to be terminated and termination time
