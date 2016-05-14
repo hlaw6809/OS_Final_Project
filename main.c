@@ -152,7 +152,30 @@ void initialize() {
 	for (i=0;i<2;i++) {
 		PCB_p pcb = PCB_construct();
 		PCB_init(pcb,consumer);
-		// PCB_set_pid(pcb,i);
+		PCB_set_pid(pcb,i);
+		char * pcbString = PCB_toString(pcb);
+		printf("%s\n",pcbString);
+		free(pcbString);
+		// printf("%s","I/O_1 Traps Values ");
+		// int j;
+		// for (j=0;j<4;j++) {
+		// 	printf("%d ", pcb->io1_traps[j]);
+		// }
+		// //printf("\n%s","I/O_2 Traps Values ");
+		// for (j=0;j<4;j++) {
+		// 	printf("%d ", pcb->io2_traps[j]);
+		// }
+		// FIFOq_enqueue(readyQueue,pcb);
+		// char * queueString = FIFOq_toString(readyQueue);
+		// printf("\nReady Queue: %s\n",queueString);
+		// free(queueString);
+		// printf("-----------------\n");
+	}
+	int j;
+	for (j=2;j<4;j++) {
+		PCB_p pcb = PCB_construct();
+		PCB_init(pcb,producer);
+		PCB_set_pid(pcb,i);
 		char * pcbString = PCB_toString(pcb);
 		printf("%s\n",pcbString);
 		free(pcbString);
