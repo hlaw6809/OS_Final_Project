@@ -23,6 +23,12 @@ FIFOq_p terminationQueue;
 IO_p io1;
 IO_p io2;
 
+// global count 
+int count = 0;
+
+// mutex for protecting the global count
+Mutex mutex1;
+
 int tick_IO(IO_p io) {
 	(*io)--;
 	int interrupted = 0;
@@ -219,7 +225,7 @@ int main(int argc, char* argv[]) {
 					scheduler(TERMINATION);
 				}
 			}
-			if (runningProcess != NULL) {
+			if (runningProcess != NULL && runningProcess->type == normal) {
 				int index;
 				for (index = 0; index < 4; index++) {
 					if (runningProcess->pc == runningProcess->io1_traps[index]) {
@@ -232,6 +238,30 @@ int main(int argc, char* argv[]) {
 						break;
 					}
 				}
+			}
+			// if the current running process is consumer 
+			// lock the mutex and print (read) the global count and unlock the mutext
+			else if (runningProcess != NULL && runningProcess->type == consumer) {
+				if(tryLock(mutex1)) {
+					mutex_lock(runningProcess, mutex1);
+					count = count + 1;
+					mutex_unlock(runningProcess, mutex1);
+				}
+				else {
+					FIFOq_enqueue(readyQueue,runningProcess);
+				}
+			}
+			// if the current running process is producer, try to lock the mutex
+			// and increment the global count by 1, and unlock the mutex
+			else if (runningProcess != NULL && runningProcess->type == producer) {
+				if(tryLock(mutex1)) {
+					mutex_lock(runningProcess, mutex1);
+					printf("Count: "+ count);
+					mutex_unlock(runningProcess, mutex1);
+				}
+				else {
+					FIFOq_enqueue(readyQueue,runningProcess);
+				}				
 			}
 		}
 		if (tick_timer(timer) == 1) {
