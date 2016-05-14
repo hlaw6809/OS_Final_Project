@@ -33,20 +33,21 @@ void PCB_deconstruct (PCB_p); // deallocates pcb from the heap
 * 3. term_count = 0, initiate the trap1 and trap2 
 * 4. set up the creation time by current time
 */
-int PCB_init (PCB_p); //sets default values for member data
+int PCB_init (PCB_p,enum pcb_type type); //sets default values for member data
 char * PCB_toString (PCB_p); // returns a string reprersenting the contents of the pcb
 
 // accessors
 unsigned long PCB_get_pid (PCB_p); // returns pid of the process
 enum state_type PCB_get_state (PCB_p); // get the state of pcb
 unsigned long PCB_get_PC (PCB_p); // get the pc value of pcb
-enum pcb_type PCB_get_type (PCB_p); // get the type of the pcb
+char* PCB_get_type_str (PCB_p); // get the type of the pcb
+enum pcb_type PCB_get_type (PCB_p);
 
 // mutators
 int PCB_set_pid (PCB_p, unsigned long pid);
 int PCB_set_state (PCB_p, enum state_type state);
 int PCB_set_PC (PCB_p, unsigned long pc);
 int PCB_terminate(PCB_p); // pcb terminated and termination set to current time
-int PCB_set_type (PCB_p); // set the type of the pcb
+int PCB_set_type (PCB_p, enum pcb_type type); // set the type of the pcb
 
 #endif

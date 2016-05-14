@@ -21,7 +21,8 @@ void PCB_deconstruct(PCB_p raw_pcb) {
 
 // pcb initiation
 // in running status, term_count change to 1 and state to running
-int PCB_init (PCB_p raw_pcb) {
+// regular pcb init with pcb_type type
+int PCB_init (PCB_p raw_pcb, enum pcb_type type) {
 	time_t now = time(0);
 	srand((unsigned) rand());
 	// max pc value from 1000 to 3000
@@ -38,15 +39,29 @@ int PCB_init (PCB_p raw_pcb) {
 	raw_pcb->terminate = r3;
 	raw_pcb->term_count = 0;
 	// set up the trap pc values
-	int i;
-	for (i=0;i<4;i++) {
-		raw_pcb->io1_traps[i] = rand() % r + 1;
-	} 
-	for (i=0;i<4;i++) {
-		raw_pcb->io2_traps[i] = rand() % r + 1;
+	// if the pcb type is normal
+	if (type == normal) {
+		raw_pcb->type = normal;
+		int i;
+		for (i=0;i<4;i++) {
+			raw_pcb->io1_traps[i] = rand() % r + 1;
+		} 
+		for (i=0;i<4;i++) {
+			raw_pcb->io2_traps[i] = rand() % r + 1;
+		}
+	}
+	else if (type == consumer) {
+		raw_pcb->type = consumer;
+	}
+	else if (type == producer) {
+		raw_pcb->type = producer;
+	}
+	else {
+		raw_pcb->type = idle;
 	}
 	return SUCCESS;
 }
+
 
 int PCB_set_pid (PCB_p raw_pcb, unsigned long pid) {
 	if(!raw_pcb) {
@@ -101,11 +116,22 @@ unsigned long PCB_get_PC (PCB_p raw_pcb) {
 	return raw_pcb -> state;
 }
 
+char* PCB_get_type_str (PCB_p raw_pcb) {
+	if(!raw_pcb) {
+		return "NO_OBJECT_ERROR";
+	}
+	switch(raw_pcb -> type) {
+		case normal: return "Normal";
+		case idle: return "Idle";
+		case consumer: return "Consumer";
+		case producer: return "Producer";
+	}
+}
 enum pcb_type PCB_get_type (PCB_p raw_pcb) {
 	if(!raw_pcb) {
 		return NO_OBJECT_ERROR;
 	}
-	return raw_pcb -> type;
+	return raw_pcb->type;
 }
 
 // set the PCB's state to be terminated and termination time
@@ -123,7 +149,7 @@ int PCB_terminate (PCB_p raw_pcb) {
 }
 
 char * PCB_toString (PCB_p raw_pcb) {
-	char *c = malloc(500);
+	char *c = malloc(600);
 	if(!raw_pcb) {
 		sprintf(c,"NO_OBJECT_ERROR");
 		return c;
@@ -132,7 +158,9 @@ char * PCB_toString (PCB_p raw_pcb) {
 		// print out the contents of pcb
 		char *s;
 		s = ctime(&(raw_pcb->creation));
-		sprintf(c,"PID: 0x%lu, Created At: %s, Priority: 0x%u, state: %d, PC: 0x%ld, Max_PC: 0x%ld, terminate: %d ",raw_pcb->pid,s,raw_pcb->priority,raw_pcb->state,raw_pcb->pc,raw_pcb->max_pc,raw_pcb->terminate);
+		char * pcbtype = PCB_get_type_str(raw_pcb);
+		sprintf(c,"PID: 0x%lu, Created At: %s, Priority: 0x%u, pcb_type: %s, state: %d, PC: 0x%ld, Max_PC: 0x%ld, terminate: %d ",raw_pcb->pid,s, raw_pcb->priority, pcbtype, raw_pcb->state,raw_pcb->pc,raw_pcb->max_pc,raw_pcb->terminate);
+		// free(pcbtype);
 		return c;
 	}
 }
