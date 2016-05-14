@@ -6,11 +6,11 @@
 #include "timer.h"
 #include "pcb_h.h"
 #include "FIFO.h"
+#include "timer.c"
+#include "pcb.c"
+#include "FIFO.c"
 
 typedef int * IO_p;
-
-enum schedule_type {TIMER, TERMINATION, TRAP};
-
 enum schedule_type {TIMER, TERMINATION, TRAP};
 
 PCB_p runningProcess;
@@ -33,34 +33,34 @@ int tick_IO(IO_p io) {
 	return interrupted;
 }
 
-void dispatcher() {
-	runningProcess = FIFOq_dequeue(readyQueue);
-	printf("Now Running: %s\n",PCB_toString(runningProcess));
-	if (runningProcess != NULL) {
-		PCB_set_state(runningProcess, running);
-	}
-}
+// void dispatcher() {
+// 	runningProcess = FIFOq_dequeue(readyQueue);
+// 	printf("Now Running: %s\n",PCB_toString(runningProcess));
+// 	if (runningProcess != NULL) {
+// 		PCB_set_state(runningProcess, running);
+// 	}
+// }
 
 //Add currently running proccess to ready queue and call dispatcher to dispatch next proccess.
-void scheduler(enum schedule_type type) {
-	if (type == TIMER) {
-		if (runningProcess != NULL) {
-			PCB_set_state(runningProcess, ready);
-			printf("Returned to ReadyQueue: %s\n",PCB_toString(runningProcess));
-			FIFOq_enqueue(readyQueue, runningProcess);
-		}
-	} else if (type == TERMINATION) {
-		PCB_set_state(runningProcess, terminated);
-		// set up the termination time of runningProcess
-		time_t now = time(0);
-		runningProcess->termination = now;
-		char *s;
-		s = ctime(&(runningProcess->termination));
-		printf("Terminated at %s: %s\n",s,PCB_toString(runningProcess));
-		FIFOq_enqueue(terminationQueue, runningProcess);
-	}
-	dispatcher();
-}
+// void scheduler(enum schedule_type type) {
+// 	if (type == TIMER) {
+// 		if (runningProcess != NULL) {
+// 			PCB_set_state(runningProcess, ready);
+// 			printf("Returned to ReadyQueue: %s\n",PCB_toString(runningProcess));
+// 			FIFOq_enqueue(readyQueue, runningProcess);
+// 		}
+// 	} else if (type == TERMINATION) {
+// 		PCB_set_state(runningProcess, terminated);
+// 		// set up the termination time of runningProcess
+// 		time_t now = time(0);
+// 		runningProcess->termination = now;
+// 		char *s;
+// 		s = ctime(&(runningProcess->termination));
+// 		printf("Terminated at %s: %s\n",s,PCB_toString(runningProcess));
+// 		FIFOq_enqueue(terminationQueue, runningProcess);
+// 	}
+// 	dispatcher();
+// }
 
 void dispatcher() {
 	if (FIFOq_is_empty(readyQueue) == 0) {
@@ -151,30 +151,30 @@ void initialize() {
 	int i;
 	for (i=0;i<2;i++) {
 		PCB_p pcb = PCB_construct();
-		PCB_init(pcb);
-		PCB_set_pid(pcb,i);
+		PCB_init(pcb,consumer);
+		// PCB_set_pid(pcb,i);
 		char * pcbString = PCB_toString(pcb);
 		printf("%s\n",pcbString);
 		free(pcbString);
-		printf("%s","I/O_1 Traps Values ");
-		int j;
-		for (j=0;j<4;j++) {
-			printf("%d ", pcb->io1_traps[j]);
-		}
-		//printf("\n%s","I/O_2 Traps Values ");
-		for (j=0;j<4;j++) {
-			printf("%d ", pcb->io2_traps[j]);
-		}
-		FIFOq_enqueue(readyQueue,pcb);
-		char * queueString = FIFOq_toString(readyQueue);
-		printf("\nReady Queue: %s\n",queueString);
-		free(queueString);
-		printf("-----------------\n");
+		// printf("%s","I/O_1 Traps Values ");
+		// int j;
+		// for (j=0;j<4;j++) {
+		// 	printf("%d ", pcb->io1_traps[j]);
+		// }
+		// //printf("\n%s","I/O_2 Traps Values ");
+		// for (j=0;j<4;j++) {
+		// 	printf("%d ", pcb->io2_traps[j]);
+		// }
+		// FIFOq_enqueue(readyQueue,pcb);
+		// char * queueString = FIFOq_toString(readyQueue);
+		// printf("\nReady Queue: %s\n",queueString);
+		// free(queueString);
+		// printf("-----------------\n");
 	}
-	runningProcess = FIFOq_dequeue(readyQueue);
-	char * pcbString = PCB_toString(runningProcess);
-	printf("Now Running: %s\n",pcbString);
-	free(pcbString);
+	// runningProcess = FIFOq_dequeue(readyQueue);
+	// char * pcbString = PCB_toString(runningProcess);
+	// printf("Now Running: %s\n",pcbString);
+	// free(pcbString);
 }
 
 
