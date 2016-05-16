@@ -9,7 +9,7 @@ int mutex_trylock (PCB_p raw_pcb, MUTEX_p mutex) {
 }
 
 int mutex_lock (PCB_p raw_pcb, MUTEX_p mutex) {
-	if(MUTEX_TryLock(raw_pcb, mutex) == 0) {
+	if (mutex_trylock(raw_pcb, mutex) == 0) {
 		mutex->owner = raw_pcb;
 		return SUCCESS;
 	}
