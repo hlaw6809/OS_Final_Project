@@ -27,7 +27,7 @@ IO_p io2;
 int count = 0;
 
 // mutex for protecting the global count
-Mutex mutex1;
+MUTEX_p mutex1;
 
 int tick_IO(IO_p io) {
 	(*io)--;
@@ -242,26 +242,25 @@ int main(int argc, char* argv[]) {
 			// if the current running process is consumer 
 			// lock the mutex and print (read) the global count and unlock the mutext
 			else if (runningProcess != NULL && runningProcess->type == consumer) {
-				if(tryLock(mutex1)) {
-					mutex_lock(runningProcess, mutex1);
+				if(mutex_lock(runningProcess, mutex1) == SUCCESS) {
 					count = count + 1;
 					mutex_unlock(runningProcess, mutex1);
 				}
-				else {
-					FIFOq_enqueue(readyQueue,runningProcess);
-				}
+				// NEED TO ENTER THE READY QUEUE OR KEEP GOING..
+				// else {
+				// 	FIFOq_enqueue(readyQueue,runningProcess);
+				// }
 			}
 			// if the current running process is producer, try to lock the mutex
 			// and increment the global count by 1, and unlock the mutex
 			else if (runningProcess != NULL && runningProcess->type == producer) {
-				if(tryLock(mutex1)) {
-					mutex_lock(runningProcess, mutex1);
+				if(mutex_lock(runningProcess, mutex1)) {
 					printf("Count: "+ count);
 					mutex_unlock(runningProcess, mutex1);
 				}
-				else {
-					FIFOq_enqueue(readyQueue,runningProcess);
-				}				
+				// else {
+				// 	FIFOq_enqueue(readyQueue,runningProcess);
+				// }				
 			}
 		}
 		if (tick_timer(timer) == 1) {
