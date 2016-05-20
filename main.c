@@ -9,6 +9,8 @@
 #include "timer.c"
 #include "pcb.c"
 #include "FIFO.c"
+#include "mutex_h.h"
+#include "mutex.c"
 
 typedef int * IO_p;
 enum schedule_type {TIMER, TERMINATION, TRAP};
@@ -171,7 +173,7 @@ void initialize() {
 		// for (j=0;j<4;j++) {
 		// 	printf("%d ", pcb->io2_traps[j]);
 		// }
-		// FIFOq_enqueue(readyQueue,pcb);
+		FIFOq_enqueue(readyQueue,pcb);
 		// char * queueString = FIFOq_toString(readyQueue);
 		// printf("\nReady Queue: %s\n",queueString);
 		// free(queueString);
@@ -194,27 +196,29 @@ void initialize() {
 		// for (j=0;j<4;j++) {
 		// 	printf("%d ", pcb->io2_traps[j]);
 		// }
-		// FIFOq_enqueue(readyQueue,pcb);
+		FIFOq_enqueue(readyQueue,pcb);
 		// char * queueString = FIFOq_toString(readyQueue);
 		// printf("\nReady Queue: %s\n",queueString);
 		// free(queueString);
 		// printf("-----------------\n");
 	}
-	// runningProcess = FIFOq_dequeue(readyQueue);
-	// char * pcbString = PCB_toString(runningProcess);
-	// printf("Now Running: %s\n",pcbString);
-	// free(pcbString);
+	runningProcess = FIFOq_dequeue(readyQueue);
+	char * pcbString = PCB_toString(runningProcess);
+	printf("Now Running: %s\n",pcbString);
+	free(pcbString);
 }
 
 
 int main(int argc, char* argv[]) {
 	initialize();
 	timer = new_timer(300);
+	mutex1 = mutex_construct();
 	int x = 10;
 	while(runningProcess!=NULL 
 		|| FIFOq_is_empty(readyQueue) == 0 
 		|| FIFOq_is_empty(trap1WaitingQueue) == 0 
 		|| FIFOq_is_empty(trap2WaitingQueue) == 0) {
+
 		if (runningProcess != NULL) {
 			(runningProcess->pc)++;
 			if (runningProcess->pc >= runningProcess->max_pc) {
@@ -241,22 +245,23 @@ int main(int argc, char* argv[]) {
 			}
 			// if the current running process is consumer 
 			// lock the mutex and print (read) the global count and unlock the mutext
-			else if (runningProcess != NULL && runningProcess->type == consumer) {
-				if(mutex_lock(runningProcess, mutex1) == SUCCESS) {
+			else if (runningProcess != NULL && runningProcess->type == 2) {
+				if(mutex_lock (runningProcess, mutex1) == 0) {
 					count = count + 1;
-					mutex_unlock(runningProcess, mutex1);
+					printf("Count is incremented to be: %d",count);
+					mutex_unlock (runningProcess, mutex1);
 				}
 				// NEED TO ENTER THE READY QUEUE OR KEEP GOING..
 				// else {
 				// 	FIFOq_enqueue(readyQueue,runningProcess);
 				// }
 			}
-			// if the current running process is producer, try to lock the mutex
-			// and increment the global count by 1, and unlock the mutex
-			else if (runningProcess != NULL && runningProcess->type == producer) {
-				if(mutex_lock(runningProcess, mutex1)) {
-					printf("Count: "+ count);
-					mutex_unlock(runningProcess, mutex1);
+			// // if the current running process is producer, try to lock the mutex
+			// // and increment the global count by 1, and unlock the mutex
+			else if (runningProcess != NULL && runningProcess->type == 3) {
+				if(mutex_lock (runningProcess, mutex1) == 0) {
+					printf("Count: %d",count);
+					mutex_unlock (runningProcess, mutex1);
 				}
 				// else {
 				// 	FIFOq_enqueue(readyQueue,runningProcess);

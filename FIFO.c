@@ -3,8 +3,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include "FIFO.h"
-
-
 //Enqueue
  void FIFOq_enqueue (FIFOq_p queue, PCB_p pcb) {
  	//create a new node
