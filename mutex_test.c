@@ -37,8 +37,12 @@ int main(int argc, char* argv[]) {
 	printf("%s\n",pcbString);
 	free(pcbString);
 	FIFOq_enqueue(readyQueue,pcb2);
+	// test pcb3
+	// PCB_p pcb3 = PCB_construct();
+	// PCB_init(pcb3,consumer);
+	// PCB_set_pid(pcb3,3);
+	// FIFOq_enqueue(mutex1->waitingQueue,pcb3);
 	int count = 1;
-	FIFOq_enqueue(mutex1->waitingQueue,pcb2);
 	while (FIFOq_is_empty(readyQueue) == 0) {
 		runningProcess = FIFOq_dequeue(readyQueue);
 		if (runningProcess != NULL && runningProcess->type == 3) {

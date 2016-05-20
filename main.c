@@ -13,7 +13,7 @@
 #include "mutex.c"
 
 typedef int * IO_p;
-enum schedule_type {TIMER, TERMINATION, TRAP};
+enum schedule_type {TIMER, TERMINATION, MUTEX_INTERRUPT, TRAP};
 
 PCB_p runningProcess;
 Timer_p timer;
@@ -87,7 +87,7 @@ void dispatcher() {
 
 //Add currently running proccess to ready queue and call dispatcher to dispatch next proccess.
 void scheduler(enum schedule_type type) {
-	if (type == TIMER) {
+	if (type == TIMER || type == MUTEX_INTERRUPT) {
 		if (runningProcess != NULL) {
 			PCB_set_state(runningProcess, ready);
 			char * pcbString = PCB_toString(runningProcess);
@@ -212,7 +212,7 @@ void initialize() {
 int main(int argc, char* argv[]) {
 	initialize();
 	timer = new_timer(300);
-	mutex1 = mutex_construct();
+	mutex1 = mutex_construct(1);
 	int x = 10;
 	while(runningProcess!=NULL 
 		|| FIFOq_is_empty(readyQueue) == 0 
@@ -245,27 +245,25 @@ int main(int argc, char* argv[]) {
 			}
 			// if the current running process is consumer 
 			// lock the mutex and print (read) the global count and unlock the mutext
-			else if (runningProcess != NULL && runningProcess->type == 2) {
+			if (runningProcess != NULL && runningProcess->type == 3) {
 				if(mutex_lock (runningProcess, mutex1) == 0) {
 					count = count + 1;
-					printf("Count is incremented to be: %d",count);
+					printf("Count increased by producer: %d\n",count);
 					mutex_unlock (runningProcess, mutex1);
 				}
-				// NEED TO ENTER THE READY QUEUE OR KEEP GOING..
-				// else {
-				// 	FIFOq_enqueue(readyQueue,runningProcess);
-				// }
+				else {
+					scheduler(MUTEX_INTERRUPT);
+				}
 			}
-			// // if the current running process is producer, try to lock the mutex
-			// // and increment the global count by 1, and unlock the mutex
-			else if (runningProcess != NULL && runningProcess->type == 3) {
+			// consumer
+			if (runningProcess != NULL && runningProcess->type == 2) {
 				if(mutex_lock (runningProcess, mutex1) == 0) {
-					printf("Count: %d",count);
+					printf("Consumer prints out count value : %d\n",count);
 					mutex_unlock (runningProcess, mutex1);
 				}
-				// else {
-				// 	FIFOq_enqueue(readyQueue,runningProcess);
-				// }				
+				else {
+					scheduler(MUTEX_INTERRUPT);
+				}
 			}
 		}
 		if (tick_timer(timer) == 1) {

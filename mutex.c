@@ -22,7 +22,7 @@ int mutex_trylock (PCB_p raw_pcb, MUTEX_p mutex) {
 		return 0;
 	}
 	else {
-		printf("PID 0x%lu: requested lock on mutex %d - blocked by PID 0x%lu \n",raw_pcb->pid,mutex->id,mutex->owner->pid);
+		printf("PID 0x%lu: requested lock on mutex%d - blocked by PID 0x%lu \n",raw_pcb->pid,mutex->id,mutex->owner->pid);
 		return 3;
 	}
 }
