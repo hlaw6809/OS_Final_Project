@@ -6,10 +6,9 @@
 #include "timer.h"
 #include "pcb_h.h"
 #include "FIFO.h"
+#include "mutex.h"
 
 typedef int * IO_p;
-
-enum schedule_type {TIMER, TERMINATION, TRAP};
 
 enum schedule_type {TIMER, TERMINATION, TRAP};
 
@@ -31,35 +30,6 @@ int tick_IO(IO_p io) {
 		*io = 100;
 	}
 	return interrupted;
-}
-
-void dispatcher() {
-	runningProcess = FIFOq_dequeue(readyQueue);
-	printf("Now Running: %s\n",PCB_toString(runningProcess));
-	if (runningProcess != NULL) {
-		PCB_set_state(runningProcess, running);
-	}
-}
-
-//Add currently running proccess to ready queue and call dispatcher to dispatch next proccess.
-void scheduler(enum schedule_type type) {
-	if (type == TIMER) {
-		if (runningProcess != NULL) {
-			PCB_set_state(runningProcess, ready);
-			printf("Returned to ReadyQueue: %s\n",PCB_toString(runningProcess));
-			FIFOq_enqueue(readyQueue, runningProcess);
-		}
-	} else if (type == TERMINATION) {
-		PCB_set_state(runningProcess, terminated);
-		// set up the termination time of runningProcess
-		time_t now = time(0);
-		runningProcess->termination = now;
-		char *s;
-		s = ctime(&(runningProcess->termination));
-		printf("Terminated at %s: %s\n",s,PCB_toString(runningProcess));
-		FIFOq_enqueue(terminationQueue, runningProcess);
-	}
-	dispatcher();
 }
 
 void dispatcher() {
@@ -135,6 +105,99 @@ void io_trap_handler(int trapNum) {
 	scheduler(TRAP);
 }
 
+
+
+
+
+
+void makeMutalResourceUserPair(int canDeadlock) {
+	PCB_p pcb1 = PCB_construct();
+	PCB_p pcb2 = PCB_construct();
+	PCB_init(pcb1, consumer);
+	PCB_init(pcb2, producer);
+	Mutex_p mutex1 = mutex_construct();
+	Mutex_p mutex2 = mutex_construct();
+	int pcb1StartLine;
+	int pcb2StartLine;
+	
+	//Lock mutex 1
+	PCB_instruction inst1 = {pcb1StartLine, mutex_lock, mutex1->id};
+	pcb1->instructions[0] = inst1;
+	
+	//Lock mutex 2
+	PCB_instruction inst2 = {pcb1StartLine + 1, mutex_lock, mutex2->id};
+	pcb1->instructions[1] = inst2;
+	
+	//Print Message
+	char * p = malloc(40);
+	sprintf(p, "PCB %d has locked mutexes %d and %d\n", pcb1->pid, mutex1->id, mutex2->id);
+	PCB_instruction inst3 = {pcb1StartLine + 2, print, 0};
+	inst3.printMessage = p;
+	pcb1->instructions[2] = inst3;
+	
+	//Unlock mutex 2
+	PCB_instruction inst4 = {pcb1StartLine + 3, mutex_unlock, mutex2->id};
+	pcb1->instructions[3] = inst4;
+	
+	//Lock mutex 1
+	PCB_instruction inst5 = {pcb1StartLine + 4, mutex_unlock, mutex1->id};
+	pcb1->instructions[4] = inst5;
+	
+	if (canDeadlock) {
+		//Lock mutex 2
+		PCB_instruction inst6 = {pcb2StartLine, mutex_lock, mutex2->id};
+		pcb2->instructions[0] = inst6;
+		
+		//Lock mutex 1
+		PCB_instruction inst7 = {pcb2StartLine + 1, mutex_lock, mutex1->id};
+		pcb2->instructions[1] = inst7;
+		
+		//Print Message
+		p = malloc(50);
+		sprintf(p, "PCB %d has locked mutexes %d and %d\n", pcb2->pid, mutex2->id, mutex1->id);
+		PCB_instruction inst8 = {pcb2StartLine + 2, print, 0};
+		inst8.printMessage = p;
+		pcb2->instructions[2] = inst8;
+		
+		//Unlock mutex 1
+		PCB_instruction inst9 = {pcb2StartLine + 3, mutex_unlock, mutex1->id};
+		pcb2->instructions[3] = inst9;
+		
+		//Lock mutex 2
+		PCB_instruction inst10 = {pcb2StartLine + 4, mutex_unlock, mutex2->id};
+		pcb2->instructions[4] = inst10;
+	} else {
+		//Lock mutex 1
+		PCB_instruction inst6 = {pcb2StartLine, mutex_lock, mutex1->id};
+		pcb2->instructions[0] = inst6;
+		
+		//Lock mutex 2
+		PCB_instruction inst7 = {pcb2StartLine + 1, mutex_lock, mutex2->id};
+		pcb2->instructions[1] = inst7;
+		
+		//Print Message
+		char * p = malloc(40);
+		sprintf(p, "PCB %d has locked mutexes %d and %d\n", pcb2->pid, mutex1->id, mutex2->id);
+		PCB_instruction inst8 = {pcb2StartLine + 2, print, 0};
+		inst8.printMessage = p;
+		pcb2->instructions[2] = inst8;
+		
+		//Unlock mutex 2
+		PCB_instruction inst9 = {pcb2StartLine + 3, mutex_unlock, mutex2->id};
+		pcb2->instructions[3] = inst9;
+		
+		//Lock mutex 1
+		PCB_instruction inst10 = {pcb2StartLine + 4, mutex_unlock, mutex1->id};
+		pcb2->instructions[4] = inst10;
+	}
+}
+
+
+
+
+
+
+
 void initialize() {
 	srand(time(NULL));
 	io1 = malloc(sizeof(int));
@@ -151,7 +214,7 @@ void initialize() {
 	int i;
 	for (i=0;i<2;i++) {
 		PCB_p pcb = PCB_construct();
-		PCB_init(pcb);
+		PCB_init(pcb, normal);
 		PCB_set_pid(pcb,i);
 		char * pcbString = PCB_toString(pcb);
 		printf("%s\n",pcbString);

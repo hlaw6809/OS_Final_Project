@@ -6,6 +6,7 @@
 typedef struct {
 	PCB_p owner;
 	FIFOq_p requesters;
+	int id;
 } Mutex;
 
 typedef Mutex * Mutex_p;

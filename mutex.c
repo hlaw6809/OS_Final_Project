@@ -3,9 +3,12 @@
 #include "FIFO.h"
 
 Mutex_p mutex_construct() {
+	static int id;
 	Mutex_p mutex = malloc(sizeof(Mutex));
 	mutex->owner = NULL;
 	mutex->requesters = FIFOq_construct();
+	mutex->id = id;
+	id++;
 	return mutex;
 }
 
@@ -26,7 +29,13 @@ int lock_mutex(Mutex_p toLock, PCB_p requester) {
 
 int unlock_mutex(Mutex_p toUnlock, PCB_p owner) {
 	if (toUnlock->owner->pid == owner->pid) {
-		toUnlock->owner = NULL;
+		if (FIFOq_is_empty(toUnlock->requesters)) {
+			toUnlock->owner = NULL;
+		}
+		else {
+			toUnlock->owner = FIFOq_dequeue(toUnlock->requesters);
+			printf("PID 0x%lu: passed mutex%d ownership to PID 0x%lu \n",owner->pid,toUnlock->id,toUnlock->owner->pid);
+		}
 		return 1;
 	} else {
 		printf("Thread can not unluck a mutex it does not own\n");
