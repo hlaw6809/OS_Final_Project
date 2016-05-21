@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
 				mutex_unlock (runningProcess, mutex1);
 			}
 			else {
-				// let it in ready queue?
+				// let it in ready queue? yes and get a new pcb running process 
 			}
 		}
 	}
