@@ -266,7 +266,7 @@ void initialize() {
 
 int main(int argc, char* argv[]) {
 	initialize();
-	makeMutualResourceUserPair(0);
+	//makeMutualResourceUserPair(0);
 	timer = new_timer(300);
 	int x = 10;
 	Mutex_p mutex = mutex_construct();
