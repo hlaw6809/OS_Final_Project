@@ -19,6 +19,7 @@ typedef struct pcbInst {
 } PCB_instruction;
 
 typedef struct pcb {
+	char * label;
 	unsigned long pid; // process PID #, a unique number
 	enum state_type state;
 	unsigned short priority; // priorities 0 = highest, 15 = lowest
@@ -30,7 +31,7 @@ typedef struct pcb {
 	unsigned int term_count; // counter to keep track of how many times process has passed its maxpc value
 	int io1_traps[4]; // 4 pc values for trap calls from io1
 	int io2_traps[4]; // 4 pc values for trap calls from io2
-	PCB_instruction instructions[5];
+	PCB_instruction * instructions[5];
 	enum pcb_type type;
 } PCB;
 

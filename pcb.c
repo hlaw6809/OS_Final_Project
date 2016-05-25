@@ -14,7 +14,19 @@ PCB_p PCB_construct (void) {
 }
 
 void PCB_deconstruct(PCB_p raw_pcb) {
-	if(!raw_pcb) {
+	if(raw_pcb != NULL) {
+		if (raw_pcb->label != NULL) {
+			free(raw_pcb->label);	
+		}
+		int i;
+		for (i = 0; i < 5; i++) {
+			if (raw_pcb->instructions[i] != NULL) {
+				if (raw_pcb->instructions[i]->type = print) {
+					free(raw_pcb->instructions[i]->printMessage);
+				}
+				free(raw_pcb->instructions[i]);
+			}
+		}
 		free(raw_pcb);
 	}
 }
@@ -31,6 +43,9 @@ int PCB_init (PCB_p raw_pcb, enum pcb_type type) {
 	unsigned long r2 = (rand() % r);
 	// assign terminate rounds at least 1 times
 	unsigned long r3 = (rand() % 2) + 1;
+	static int id;
+	raw_pcb->pid = id;
+	id++;
 	raw_pcb->state = ready;
 	raw_pcb->priority = 0;
 	raw_pcb->max_pc = r;
@@ -159,8 +174,8 @@ char * PCB_toString (PCB_p raw_pcb) {
 		char *s;
 		s = ctime(&(raw_pcb->creation));
 		char * pcbtype = PCB_get_type_str(raw_pcb);
-		sprintf(c,"PID: 0x%lu, Created At: %s, Priority: 0x%u, pcb_type: %s, state: %d, PC: 0x%ld, Max_PC: 0x%ld, terminate: %d ",raw_pcb->pid,s, raw_pcb->priority, pcbtype, raw_pcb->state,raw_pcb->pc,raw_pcb->max_pc,raw_pcb->terminate);
-		// free(pcbtype);
+		sprintf(c,"PID: %lu, Label: %s, Created At: %s, Priority: %u, pcb_type: %s, state: %d, PC: %ld, Max_PC: %ld, terminate: %d ",raw_pcb->pid, raw_pcb->label, s, raw_pcb->priority, pcbtype, raw_pcb->state,raw_pcb->pc,raw_pcb->max_pc,raw_pcb->terminate);
+		free(pcbtype);
 		return c;
 	}
 }

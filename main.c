@@ -8,6 +8,8 @@
 #include "FIFO.h"
 #include "mutex.h"
 
+#define MRU_COUNT 10
+
 typedef int * IO_p;
 
 enum schedule_type {TIMER, TERMINATION, TRAP};
@@ -110,38 +112,48 @@ void io_trap_handler(int trapNum) {
 
 
 
-void makeMutalResourceUserPair(int canDeadlock) {
+void makeMutualResourceUserPair(int canDeadlock) {
+	srand(time(NULL));
+	static int pairId;
 	PCB_p pcb1 = PCB_construct();
 	PCB_p pcb2 = PCB_construct();
 	PCB_init(pcb1, consumer);
 	PCB_init(pcb2, producer);
 	Mutex_p mutex1 = mutex_construct();
 	Mutex_p mutex2 = mutex_construct();
-	int pcb1StartLine;
-	int pcb2StartLine;
+	int pcb1StartLine = rand() % (pcb1->max_pc - 5);
+	int pcb2StartLine = rand() % (pcb2->max_pc - 5);
+	
+	char * p = malloc(50);
+	sprintf(p, "User 1 for resource pair %d", pairId);
+	pcb1->label = p;
+	p = malloc(50);
+	sprintf(p, "User 2 for resource pair %d", pairId);
+	pcb2->label = p;
+	pairId++;
 	
 	//Lock mutex 1
 	PCB_instruction inst1 = {pcb1StartLine, mutex_lock, mutex1->id};
-	pcb1->instructions[0] = inst1;
+	pcb1->instructions[0] = &inst1;
 	
 	//Lock mutex 2
 	PCB_instruction inst2 = {pcb1StartLine + 1, mutex_lock, mutex2->id};
-	pcb1->instructions[1] = inst2;
+	pcb1->instructions[1] = &inst2;
 	
 	//Print Message
-	char * p = malloc(40);
+	p = malloc(50);
 	sprintf(p, "PCB %d has locked mutexes %d and %d\n", pcb1->pid, mutex1->id, mutex2->id);
 	PCB_instruction inst3 = {pcb1StartLine + 2, print, 0};
 	inst3.printMessage = p;
-	pcb1->instructions[2] = inst3;
+	pcb1->instructions[2] = &inst3;
 	
 	//Unlock mutex 2
 	PCB_instruction inst4 = {pcb1StartLine + 3, mutex_unlock, mutex2->id};
-	pcb1->instructions[3] = inst4;
+	pcb1->instructions[3] = &inst4;
 	
 	//Lock mutex 1
 	PCB_instruction inst5 = {pcb1StartLine + 4, mutex_unlock, mutex1->id};
-	pcb1->instructions[4] = inst5;
+	pcb1->instructions[4] = &inst5;
 	
 	if (canDeadlock) {
 		//Lock mutex 2
@@ -176,7 +188,7 @@ void makeMutalResourceUserPair(int canDeadlock) {
 		pcb2->instructions[1] = inst7;
 		
 		//Print Message
-		char * p = malloc(40);
+		p = malloc(50);
 		sprintf(p, "PCB %d has locked mutexes %d and %d\n", pcb2->pid, mutex1->id, mutex2->id);
 		PCB_instruction inst8 = {pcb2StartLine + 2, print, 0};
 		inst8.printMessage = p;
@@ -190,6 +202,17 @@ void makeMutalResourceUserPair(int canDeadlock) {
 		PCB_instruction inst10 = {pcb2StartLine + 4, mutex_unlock, mutex1->id};
 		pcb2->instructions[4] = inst10;
 	}
+	
+	char * pcbString = PCB_toString(pcb1);
+	printf("%s\n",pcbString);
+	free(pcbString);
+		
+	pcbString = PCB_toString(pcb2);
+	printf("%s\n",pcbString);
+	free(pcbString);
+	
+	FIFOq_enqueue(readyQueue,pcb1);
+	FIFOq_enqueue(readyQueue,pcb2);
 }
 
 
@@ -212,7 +235,7 @@ void initialize() {
 	trap1WaitingQueue = FIFOq_construct();
 	trap2WaitingQueue = FIFOq_construct();
 	int i;
-	for (i=0;i<2;i++) {
+	for (i=0;i<1;i++) {
 		PCB_p pcb = PCB_construct();
 		PCB_init(pcb, normal);
 		PCB_set_pid(pcb,i);
@@ -243,8 +266,10 @@ void initialize() {
 
 int main(int argc, char* argv[]) {
 	initialize();
+	makeMutualResourceUserPair(0);
 	timer = new_timer(300);
 	int x = 10;
+	Mutex_p mutex = mutex_construct();
 	while(runningProcess!=NULL 
 		|| FIFOq_is_empty(readyQueue) == 0 
 		|| FIFOq_is_empty(trap1WaitingQueue) == 0 
@@ -261,6 +286,7 @@ int main(int argc, char* argv[]) {
 			}
 			if (runningProcess != NULL) {
 				int index;
+				//Check for I/O interrupts
 				for (index = 0; index < 4; index++) {
 					if (runningProcess->pc == runningProcess->io1_traps[index]) {
 						//Handle I/O 1 trap
@@ -270,6 +296,23 @@ int main(int argc, char* argv[]) {
 						//Handle I/O 2 trap
 						io_trap_handler(2);
 						break;
+					}
+				}
+				//check for mutex instructions
+				for (index = 0; index < 5; index++) {
+					int locked;
+					PCB_instruction inst = runningProcess->instructions[index];
+					if (runningProcess->pc == inst->line) {
+						switch (inst->type) {
+							mutex_lock : 
+								locked = lock_mutex(mutex, runningProcess);
+								if (!locked) {
+									printf("PCB %d could not lock mutex %d\n", runningProcess->pid, mutex->id);
+									scheduler(TIMER);
+								} else {
+									printf("PCB %d could locked mutex %d\n", runningProcess->pid, mutex->id);
+								}
+						}
 					}
 				}
 			}
