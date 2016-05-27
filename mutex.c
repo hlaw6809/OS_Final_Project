@@ -4,7 +4,7 @@
 
 Mutex_p mutex_construct() {
 	static int id;
-	Mutex_p mutex = malloc(sizeof(Mutex));
+	Mutex_p mutex = calloc(1, sizeof(Mutex));
 	mutex->owner = NULL;
 	mutex->requesters = FIFOq_construct();
 	mutex->id = id;

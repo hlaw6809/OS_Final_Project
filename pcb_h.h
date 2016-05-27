@@ -5,17 +5,14 @@
 
 enum state_type {new_state, ready, running, interrupted, waiting, terminated};
 // idle pcbs are the intensive pcbs
-enum pcb_type {normal, idle, consumer, producer};
+enum pcb_type {normal, idle, consumer, producer, deadlock_pair};
 
-enum instruction_type {mutex_lock, mutex_unlock, try_lock_call, print};
+enum instruction_type {mutex_lock, mutex_unlock, try_lock_call, critical};
 
 typedef struct pcbInst {
 	int line;
 	enum instruction_type type;
-	union {
-		int mutexId;
-		char * printMessage;
-	};
+	int mutexId;
 } PCB_instruction;
 
 typedef struct pcb {
@@ -31,7 +28,7 @@ typedef struct pcb {
 	unsigned int term_count; // counter to keep track of how many times process has passed its maxpc value
 	int io1_traps[4]; // 4 pc values for trap calls from io1
 	int io2_traps[4]; // 4 pc values for trap calls from io2
-	PCB_instruction * instructions[5];
+	PCB_instruction instructions[5];
 	enum pcb_type type;
 } PCB;
 

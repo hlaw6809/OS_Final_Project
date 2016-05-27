@@ -18,15 +18,6 @@ void PCB_deconstruct(PCB_p raw_pcb) {
 		if (raw_pcb->label != NULL) {
 			free(raw_pcb->label);	
 		}
-		int i;
-		for (i = 0; i < 5; i++) {
-			if (raw_pcb->instructions[i] != NULL) {
-				if (raw_pcb->instructions[i]->type = print) {
-					free(raw_pcb->instructions[i]->printMessage);
-				}
-				free(raw_pcb->instructions[i]);
-			}
-		}
 		free(raw_pcb);
 	}
 }
@@ -65,14 +56,8 @@ int PCB_init (PCB_p raw_pcb, enum pcb_type type) {
 			raw_pcb->io2_traps[i] = rand() % r + 1;
 		}
 	}
-	else if (type == consumer) {
-		raw_pcb->type = consumer;
-	}
-	else if (type == producer) {
-		raw_pcb->type = producer;
-	}
 	else {
-		raw_pcb->type = idle;
+		raw_pcb->type = type;
 	}
 	return SUCCESS;
 }
@@ -140,6 +125,7 @@ char* PCB_get_type_str (PCB_p raw_pcb) {
 		case idle: return "Idle";
 		case consumer: return "Consumer";
 		case producer: return "Producer";
+		case deadlock_pair: return "Deadlock Pair";
 	}
 }
 enum pcb_type PCB_get_type (PCB_p raw_pcb) {
