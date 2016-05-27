@@ -109,3 +109,15 @@ void FIFOq_destruct(FIFOq_p queue) {
 	}
 	free(queue);
 }
+
+// method to return 1 if the fifo queue contains the pcb
+int FIFOq_contains(FIFOq_p queue, PCB_p pcb) {
+	Node * node = queue->head;
+	while (node != NULL) {
+		if(node -> pcb == pcb) {
+			return 1;
+		}
+		node = node -> next;
+	}
+	return 0;
+}
