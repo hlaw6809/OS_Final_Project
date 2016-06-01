@@ -27,7 +27,7 @@ IO_p io2;
 Mutex_p pcMutexes[5];
 int counts[5];
 
-Mutex_p deadlockMutexes[5];
+Mutex_p deadlockMutexes[10];
 
 int tick_IO(IO_p io) {
 	(*io)--;
@@ -43,13 +43,13 @@ void dispatcher() {
 	if (FIFOq_is_empty(readyQueue) == 0) {
 		runningProcess = FIFOq_dequeue(readyQueue);
 		char * pcbString = PCB_toString(runningProcess);
-		printf("Now Running: %s\n",pcbString);
+		//printf("Now Running: %s\n",pcbString);
 		free(pcbString);
 		if (runningProcess != NULL) {
 			PCB_set_state(runningProcess, running);
 		}
 	} else {
-		printf("Now Running: NULL\n");
+		//printf("Now Running: Idle\n");
 		runningProcess = NULL;
 	}
 }
@@ -63,7 +63,7 @@ void scheduler(enum schedule_type type) {
 			}
 			PCB_set_state(runningProcess, ready);
 			char * pcbString = PCB_toString(runningProcess);
-			printf("Returned to ReadyQueue: %s\n",pcbString);
+			//printf("Returned to ReadyQueue: %s\n",pcbString);
 			free(pcbString);
 			FIFOq_enqueue(readyQueue, runningProcess);
 		}
@@ -75,7 +75,7 @@ void scheduler(enum schedule_type type) {
 		char *s;
 		s = ctime(&(runningProcess->termination));
 		char * pcbString = PCB_toString(runningProcess);
-		printf("Terminated at %s: %s\n",s,pcbString);
+		//printf("Terminated at %s: %s\n",s,pcbString);
 		free(pcbString);
 		FIFOq_enqueue(terminationQueue, runningProcess);
 		runningProcess = NULL;
@@ -85,7 +85,7 @@ void scheduler(enum schedule_type type) {
 
 // check if current process need to be terminated..
 bool PCB_check_terminate () {
-	if(runningProcess->term_count < runningProcess->terminate) {
+	if(runningProcess->terminate == 0 || runningProcess->term_count < runningProcess->terminate) {
 		return false;
 	}
 	// runningProcess->term_count >= runningProcess -> terminate
@@ -115,6 +115,24 @@ void io_trap_handler(int trapNum) {
 	scheduler(TRAP);
 }
 
+int isDeadlocked() {
+	int i;
+	for (i = 0; i < 5; i++) {
+		Mutex_p mutex1 = deadlockMutexes[i];
+		PCB_p owner1 = mutex1->owner;
+		int j;
+		for (j = 0; j < 5; j++) {
+			Mutex_p mutex2 = deadlockMutexes[j];
+			PCB_p owner2 = mutex2->owner;
+			if (FIFOq_contains(mutex2->requesters, owner1) && FIFOq_contains(mutex1->requesters, owner2)) {
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+
 void makeMutualResourceUserPair(int canDeadlock) {
 	srand(time(NULL));
 	static int pairId;
@@ -136,7 +154,6 @@ void makeMutualResourceUserPair(int canDeadlock) {
 	p = malloc(50);
 	sprintf(p, "User 2 for resource pair %d", pairId);
 	pcb2->label = p;
-	pairId++;
 	
 	//Lock mutex 1
 	PCB_instruction inst1 = {pcb1StartLine, mutex_lock, mutex1->id};
@@ -158,7 +175,7 @@ void makeMutualResourceUserPair(int canDeadlock) {
 	PCB_instruction inst5 = {pcb1StartLine + 4, mutex_unlock, mutex1->id};
 	pcb1->instructions[4] = inst5;
 	
-	if (canDeadlock) {
+	if (canDeadlock == 1) {
 		//Lock mutex 2
 		PCB_instruction inst6 = {pcb2StartLine, mutex_lock, mutex2->id};
 		pcb2->instructions[0] = inst6;
@@ -210,21 +227,29 @@ void makeMutualResourceUserPair(int canDeadlock) {
 	
 	FIFOq_enqueue(readyQueue,pcb1);
 	FIFOq_enqueue(readyQueue,pcb2);
-	deadlockMutexes[0] = mutex1;
-	deadlockMutexes[1] = mutex2;
+	deadlockMutexes[pairId * 2] = mutex1;
+	deadlockMutexes[pairId * 2 + 1] = mutex2;
+	pcb1->terminate = 0;
+	pcb2->terminate = 0;
+	
+	pairId++;
 }
 
 void createPCPairs() {
 	int i;
 	for (i = 0; i < 5; i++) {
 		pcMutexes[i] = mutex_construct();
+		
 		PCB_p consumerPCB = PCB_construct();
 		PCB_init(consumerPCB, consumer);
 		int pcbStartLine = rand() % (consumerPCB->max_pc - 5);
+		//Lock Mutex
 		PCB_instruction inst1 = {pcbStartLine, mutex_lock, i};
 		consumerPCB->instructions[0] = inst1;
+		//Critical
 		PCB_instruction inst2 = {pcbStartLine + 1, critical, i};
 		consumerPCB->instructions[1] = inst2;
+		//Unlock Mutex
 		PCB_instruction inst3 = {pcbStartLine + 2, mutex_unlock, i};
 		consumerPCB->instructions[2] = inst3;
 		char * pcbString = PCB_toString(consumerPCB);
@@ -235,16 +260,19 @@ void createPCPairs() {
 		PCB_p producerPCB = PCB_construct();
 		PCB_init(producerPCB, producer);
 		pcbStartLine = rand() % (producerPCB->max_pc - 5);
+		//Lock Mutex
 		PCB_instruction inst4 = {pcbStartLine, mutex_lock, i};
 		producerPCB->instructions[0] = inst4;
+		//Critical
 		PCB_instruction inst5 = {pcbStartLine + 1, critical, i};
 		producerPCB->instructions[1] = inst5;
+		//Unlock Mutex
 		PCB_instruction inst6 = {pcbStartLine + 2, mutex_unlock, i};
 		producerPCB->instructions[2] = inst6;
 		pcbString = PCB_toString(producerPCB);
 		printf("%s\n",pcbString);
 		free(pcbString);
-		FIFOq_enqueue(readyQueue,consumerPCB);
+		FIFOq_enqueue(readyQueue, producerPCB);
 	}
 	
 }
@@ -294,9 +322,12 @@ void initialize() {
 
 int main(int argc, char* argv[]) {
 	initialize();
-	makeMutualResourceUserPair(0);
+	int pairs;
+	for (pairs = 0; pairs < 5; pairs++) {
+		makeMutualResourceUserPair(1);
+	}
 	//createPCPairs();
-	timer = new_timer(300);
+	timer = new_timer(3);
 	int x = 10;
 	printf("Starting Simulation\n");
 	while(runningProcess != NULL 
@@ -306,6 +337,7 @@ int main(int argc, char* argv[]) {
 			
 		if (runningProcess != NULL) {
 			(runningProcess->pc)++;
+			//Check For max PC
 			if (runningProcess->pc > runningProcess->max_pc) {
 				runningProcess->pc = 0;
 				(runningProcess->term_count)++;
@@ -313,6 +345,7 @@ int main(int argc, char* argv[]) {
 					// if readyQueue is Empty
 					scheduler(TERMINATION);
 				}
+			//Handle normal PCB's with IO trap requests
 			} else if (runningProcess->type == normal) {
 				int index;
 				for (index = 0; index < 4; index++) {
@@ -326,39 +359,37 @@ int main(int argc, char* argv[]) {
 						break;
 					}
 				}
+			
 			} else if (runningProcess->type == deadlock_pair || runningProcess->type == consumer || runningProcess->type == producer) {
 				int index;
 				//check for mutex instructions
 				for (index = 0; index < 5; index++) {
 					int result;
 					PCB_instruction inst = runningProcess->instructions[index];
-					Mutex_p mutex;
 					if (runningProcess->pc == inst.line) {
+						Mutex_p mutex;
+						if (runningProcess->type == deadlock_pair) {
+							mutex = deadlockMutexes[inst.mutexId];
+						} else if (runningProcess->type == consumer || runningProcess->type == producer) {
+							mutex = pcMutexes[inst.mutexId];
+						}
 						switch (inst.type) {
 							case mutex_lock :
-								printf("LOCKING MUTEX\n");
-								if (runningProcess->type == deadlock_pair) {
-									printf("DEADLOCK PAIR %d\n", inst.mutexId);
-									mutex = deadlockMutexes[inst.mutexId];
-								} else if (runningProcess->type == consumer || runningProcess->type == producer) {
-									printf("PC PAIR\n");
-									mutex = pcMutexes[inst.mutexId];
-								}
+								printf("PID %d: requested lock on mutex %d - ", runningProcess->pid, mutex->id);
 								result = lock_mutex(mutex, runningProcess);
 								if (result == 1) {
-									printf("Locked Mutex %d\n", inst.mutexId);
+									printf("succeeded\n");
 								} else {
-									printf("Did Not Lock Mutex %d\n", inst.mutexId);
+									printf("blocked by PID %d\n", mutex->owner->pid);
+									if (isDeadlocked() == 1) {
+										printf("DEAD LOCK HAS OCCURED ON MUTEX %d", mutex->id);
+										return 0;
+									}
 									scheduler(MUTEX_INTERRUPT);
 								}
 								break;
 								
 							case mutex_unlock :
-								if (runningProcess->type == deadlock_pair) {
-									mutex = deadlockMutexes[inst.mutexId];
-								} else if (runningProcess->type == consumer || runningProcess->type == producer) {
-									mutex = pcMutexes[inst.mutexId];
-								}
 								result = unlock_mutex(mutex, runningProcess);
 								if (result == 1) {
 									printf("Unlock Mutex %d\n", inst.mutexId);
@@ -368,11 +399,6 @@ int main(int argc, char* argv[]) {
 								break;
 								
 							case try_lock_call :
-								if (runningProcess->type == deadlock_pair) {
-									mutex = deadlockMutexes[inst.mutexId];
-								} else if (runningProcess->type == consumer || runningProcess->type == producer) {
-									mutex = pcMutexes[inst.mutexId];
-								}
 								result = try_lock(mutex);
 								break;
 								
@@ -395,7 +421,7 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		
-		
+		//Tick Timer and I/O timers
 		if (tick_timer(timer) == 1) {
 			scheduler(TIMER);
 		} else if (tick_IO(io1) == 1) {

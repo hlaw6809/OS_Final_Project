@@ -39,6 +39,7 @@
  PCB_p peek (FIFOq_p);
  char * FIFOq_toString (FIFOq_p);
  int FIFOq_is_empty(FIFOq_p);
+ int FIFOq_contains(FIFOq_p, PCB_p);
 
 
 #endif

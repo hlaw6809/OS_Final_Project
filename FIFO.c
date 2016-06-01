@@ -91,6 +91,17 @@ int FIFOq_is_empty(FIFOq_p queue) {
 	free(countString);
 	return string;
  }
+ 
+ FIFOq_contains(FIFOq_p queue, PCB_p pcb) {
+	Node * next = queue->head;
+	while (next != NULL) {
+		if (next->pcb->pid = pcb->pid) {
+			return 1;
+		}
+		next = next->next; 
+	}
+	 return 0;
+ }
 
 //creates and initialize queue.
 FIFOq_p FIFOq_construct() {
@@ -111,3 +122,4 @@ void FIFOq_destruct(FIFOq_p queue) {
 	}
 	free(queue);
 }
+
