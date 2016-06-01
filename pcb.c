@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include "pcb_h.h"
 #define SUCCESS 0
 #define NO_OBJECT_ERROR 1
@@ -44,6 +45,7 @@ int PCB_init (PCB_p raw_pcb, enum pcb_type type) {
 	raw_pcb->creation = now;
 	raw_pcb->terminate = r3;
 	raw_pcb->term_count = 0;
+	raw_pcb->label = "";
 	// set up the trap pc values
 	// if the pcb type is normal
 	if (type == normal) {
@@ -157,11 +159,13 @@ char * PCB_toString (PCB_p raw_pcb) {
 	}
 	else {
 		// print out the contents of pcb
-		char *s;
-		s = ctime(&(raw_pcb->creation));
+		char *s = malloc(1000);
+		strcpy(s, ctime(&(raw_pcb->creation)));
+		s[strlen(s) - 1] = '\0';
 		char * pcbtype = PCB_get_type_str(raw_pcb);
 		sprintf(c,"PID: %lu, Label: %s, Created At: %s, Priority: %u, pcb_type: %s, state: %d, PC: %ld, Max_PC: %ld, terminate: %d ",raw_pcb->pid, raw_pcb->label, s, raw_pcb->priority, pcbtype, raw_pcb->state,raw_pcb->pc,raw_pcb->max_pc,raw_pcb->terminate);
 		free(pcbtype);
+		free(s);
 		return c;
 	}
 }
