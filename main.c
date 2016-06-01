@@ -1,5 +1,5 @@
 //OS project part 3
-//Created by Henry Lawrence, Tina Wang, and Ashton Ohms
+//Created by Henry Lawrence, Tina Wang, Jackson Hubert, and Christine Vu
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -8,8 +8,6 @@
 #include "pcb_h.h"
 #include "FIFO.h"
 #include "mutex.h"
-
-#define MRU_COUNT 10
 
 typedef int * IO_p;
 
@@ -25,20 +23,10 @@ FIFOq_p terminationQueue;
 IO_p io1;
 IO_p io2;
 
+Mutex_p deadlockMutexes[10];
 Mutex_p pcMutexes[5];
 int counts[5];
 
-Mutex_p deadlockMutexes[10];
-
-int tick_IO(IO_p io) {
-	(*io)--;
-	int interrupted = 0;
-	if (*io == 0) {
-		interrupted = 1;
-		*io = 100;
-	}
-	return interrupted;
-}
 
 void dispatcher() {
 	if (FIFOq_is_empty(readyQueue) == 0) {
@@ -86,14 +74,15 @@ void scheduler(enum schedule_type type) {
 	dispatcher();
 }
 
-// check if current process need to be terminated..
-bool PCB_check_terminate () {
-	if(runningProcess->terminate == 0 || runningProcess->term_count < runningProcess->terminate) {
-		return false;
+
+int tick_IO(IO_p io) {
+	(*io)--;
+	int interrupted = 0;
+	if (*io == 0) {
+		interrupted = 1;
+		*io = 100;
 	}
-	else{
-  		return true;
-  	}
+	return interrupted;
 }
 
 // trap handler passing the trap service number.
@@ -117,6 +106,16 @@ void io_trap_handler(int trapNum) {
 	scheduler(TRAP);
 }
 
+// check if current process need to be terminated..
+bool PCB_check_terminate () {
+	if(runningProcess->terminate == 0 || runningProcess->term_count < runningProcess->terminate) {
+		return false;
+	}
+	else{
+  		return true;
+  	}
+}
+
 int isDeadlocked() {
 	int i;
 	for (i = 0; i < 10; i++) {
@@ -128,12 +127,7 @@ int isDeadlocked() {
 				Mutex_p mutex2 = deadlockMutexes[j];
 				PCB_p owner2 = mutex2->owner;
 				if (owner2 != NULL && mutex1->id != mutex2->id &&  FIFOq_contains(mutex2->requesters, owner1) && FIFOq_contains(mutex1->requesters, owner2)) {
-					printf("DEAD LOCK HAS OCCURED ON MUTEX %d, ENDING PROGRAM\n", mutex1->id);
-					printf("Mutex %d Owner %d\n", mutex1->id, owner1->pid);
-					printf("Mutex %d owner %d\n", mutex2->id, owner2->pid);
-					char * queueString = FIFOq_toString(readyQueue);
-					printf("\nQueue: %s\n",mutex1->requesters);
-					free(queueString);
+					printf("Deadlock detected  %d\n", mutex1->id);
 					return 1;
 				}
 			}
@@ -246,6 +240,8 @@ void createPCPairs() {
 		PCB_p consumerPCB = PCB_construct();
 		PCB_init(consumerPCB, consumer);
 		consumerPCB->terminate = 10;
+		consumerPCB->label = malloc(200);
+		sprintf(consumerPCB->label, "Consumer for resource %d", i);
 		int pcbStartLine = rand() % (consumerPCB->max_pc - 5);
 		//Lock Mutex
 		PCB_instruction inst1 = {pcbStartLine, mutex_lock, i};
@@ -264,6 +260,8 @@ void createPCPairs() {
 		PCB_p producerPCB = PCB_construct();
 		PCB_init(producerPCB, producer);
 		producerPCB->terminate = 10;
+		producerPCB->label = malloc(200);
+		sprintf(producerPCB->label, "Consumer for resource %d", i);
 		pcbStartLine = rand() % (producerPCB->max_pc - 5);
 		//Lock Mutex
 		PCB_instruction inst4 = {pcbStartLine, mutex_lock, i};
@@ -279,28 +277,10 @@ void createPCPairs() {
 		free(pcbString);
 		FIFOq_enqueue(readyQueue, producerPCB);
 	}
-	
 }
 
-void initialize() {
+void makeNormalPCBs() {
 	srand(time(NULL));
-	io1 = malloc(sizeof(int));
-	io2 = malloc(sizeof(int));
-	// Randomize the IO timer values
-	*io1 = rand() % 100 + 300;
-	*io2 = rand() % 100 + 300;
-	printf("IO1 Time: %d, IO2 Time: %d\n", *io1, *io2);
-	
-	//Construct Queues
-	readyQueue = FIFOq_construct();
-	terminationQueue = FIFOq_construct();
-	trap1WaitingQueue = FIFOq_construct();
-	trap2WaitingQueue = FIFOq_construct();
-	
-	//Make Mutex Using PCBS
-	makeMutualResourceUserPairs(0);
-	createPCPairs();
-
 	int i;
 	for (i=0;i<2;i++) {
 		PCB_p pcb = PCB_construct();
@@ -327,6 +307,26 @@ void initialize() {
 	char * pcbString = PCB_toString(runningProcess);
 	printf("Now Running: %s\n",pcbString);
 	free(pcbString);
+}
+
+void initialize() {
+	io1 = malloc(sizeof(int));
+	io2 = malloc(sizeof(int));
+	// Randomize the IO timer values
+	*io1 = rand() % 100 + 300;
+	*io2 = rand() % 100 + 300;
+	printf("IO1 Time: %d, IO2 Time: %d\n", *io1, *io2);
+	
+	//Construct Queues
+	readyQueue = FIFOq_construct();
+	terminationQueue = FIFOq_construct();
+	trap1WaitingQueue = FIFOq_construct();
+	trap2WaitingQueue = FIFOq_construct();
+	
+	//Make PCBs
+	makeMutualResourceUserPairs(0); //o for no deadlocks, 1 for possible deadlocks
+	createPCPairs();
+	makeNormalPCBs();
 }
 
 
@@ -451,8 +451,10 @@ int main(int argc, char* argv[]) {
 			*io2 = rand() % 100 + 300; // Reset random IO timer value
 		}
 	}
+	
+	//Destroy all structures
 	PCB_deconstruct(runningProcess);
-	FIFOq_destruct(readyQueue);
+	FIFOq_destruct(readyQueue);			//This destroys all PCBs as well
 	FIFOq_destruct(trap1WaitingQueue);
 	FIFOq_destruct(trap2WaitingQueue);
 	FIFOq_destruct(terminationQueue);

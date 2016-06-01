@@ -18,11 +18,13 @@ void mutex_destruct(Mutex_p toDestruct) {
 }
 
 int lock_mutex(Mutex_p toLock, PCB_p requester) {
-	if (toLock->owner == NULL) {
+	if (toLock->owner == NULL || requester->pid == toLock->owner->pid) {
 		toLock->owner = requester;
 		return 1;
 	} else {
-		FIFOq_enqueue(toLock->requesters, requester);
+		if (FIFOq_contains(toLock->requesters, requester) == 0) {
+			FIFOq_enqueue(toLock->requesters, requester);	
+		}
 		return 0;
 	}
 }
