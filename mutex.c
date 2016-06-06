@@ -30,11 +30,13 @@ int lock_mutex(Mutex_p toLock, PCB_p requester) {
 }
 
 int unlock_mutex(Mutex_p toUnlock, PCB_p owner) {
-	if (toUnlock->owner->pid == owner->pid) {
+	printf("%p\n", toUnlock->owner);
+	if (toUnlock->owner != NULL && toUnlock->owner->pid == owner->pid) {
 		if (FIFOq_is_empty(toUnlock->requesters)) {
 			toUnlock->owner = NULL;
 		}
 		else {
+			printf("Hello\n");
 			toUnlock->owner = FIFOq_dequeue(toUnlock->requesters);
 			printf("PID 0x%lu: passed mutex%d ownership to PID 0x%lu \n",owner->pid,toUnlock->id,toUnlock->owner->pid);
 		}

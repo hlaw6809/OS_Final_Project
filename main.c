@@ -145,10 +145,10 @@ void makeMutualResourceUserPairs(int canDeadlock) {
 		PCB_p pcb2 = PCB_construct();
 		PCB_init(pcb1, deadlock_pair);
 		PCB_init(pcb2, deadlock_pair);	
-		pcb1->max_pc = 600;
-		pcb2->max_pc = 600;
-		pcb1->terminate = 10;
-		pcb2->terminate = 10;
+		pcb1->max_pc = 30;
+		pcb2->max_pc = 30;
+		pcb1->terminate = 0;
+		pcb2->terminate = 0;
 		pcb1->pc = 0;
 		pcb2->pc = 0;
 		Mutex_p mutex1 = mutex_construct();
@@ -324,7 +324,7 @@ void initialize() {
 	trap2WaitingQueue = FIFOq_construct();
 	
 	//Make PCBs
-	makeMutualResourceUserPairs(0); //o for no deadlocks, 1 for possible deadlocks
+	makeMutualResourceUserPairs(1); //o for no deadlocks, 1 for possible deadlocks
 	createPCPairs();
 	makeNormalPCBs();
 }
