@@ -92,7 +92,7 @@ int FIFOq_is_empty(FIFOq_p queue) {
 	return string;
  }
  
- FIFOq_contains(FIFOq_p queue, PCB_p pcb) {
+int FIFOq_contains(FIFOq_p queue, PCB_p pcb) {
 	Node * next = queue->head;
 	while (next != NULL) {
 		if (next->pcb->pid = pcb->pid) {

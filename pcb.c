@@ -119,6 +119,23 @@ unsigned long PCB_get_PC (PCB_p raw_pcb) {
 }
 
 char* PCB_get_type_str (PCB_p raw_pcb) {
+	char *c = malloc(600);
+	if(!raw_pcb) {
+		sprintf(c,"NO_OBJECT_ERROR");
+	} else {
+		switch(raw_pcb -> type) {
+			case normal: sprintf(c,"Normal"); break;
+			case idle: sprintf(c,"Idle"); break;
+			case consumer: sprintf(c,"Consumer"); break;
+			case producer: sprintf(c,"Producer"); break;
+			case deadlock_pair: sprintf(c,"Deadlock Pair"); break;
+		}
+	}
+	return c;
+}
+
+/*
+char* PCB_get_type_str (PCB_p raw_pcb) {
 	if(!raw_pcb) {
 		return "NO_OBJECT_ERROR";
 	}
@@ -136,6 +153,7 @@ enum pcb_type PCB_get_type (PCB_p raw_pcb) {
 	}
 	return raw_pcb->type;
 }
+*/
 
 // set the PCB's state to be terminated and termination time
 int PCB_terminate (PCB_p raw_pcb) {
